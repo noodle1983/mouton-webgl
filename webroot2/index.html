@@ -86,11 +86,11 @@
 			let shaderProgram = await createProgram(gl, vertexShader, fragmentShader);
 			
 			gl.useProgram(shaderProgram);
-			let posAttrib = gl.getAttribLocation(shaderProgram, "k");
+			let posAttrib = gl.getAttribLocation(shaderProgram, "a_position");
 			gl.enableVertexAttribArray(posAttrib);
 			gl.vertexAttribPointer(posAttrib, 2, gl.FLOAT, false, 0, 0);
 			
-			let uniformLocation = gl.getUniformLocation(shaderProgram, "U");
+			let uniformLocation = gl.getUniformLocation(shaderProgram, "iTime");
 			if (!uniformLocation) {
 				console.error("uniformLocation not found!");
 				return -1;

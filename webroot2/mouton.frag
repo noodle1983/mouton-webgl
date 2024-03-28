@@ -1,6 +1,9 @@
-#version 150
+# version 300 es
+
+precision mediump float;
+
 out vec4 fragColor;
-const vec2 iResolution = vec2(1920.,1080.);
+const vec2 iResolution = vec2(640.,480.);
 
 //----------------------------------------------------------------------
 // Vertex/Fragment IO
@@ -553,7 +556,7 @@ void main()
         albedo = c * (filaments*.5+.5) * (smoothstep(i_irisSize,i_irisSize-.01, er)); // brown to green
         albedo *= vec3(1.,.8,.7) * pow(max(0.,dot(normalize(vec3(3.,1.,-1.)), ne)),8.)*300.+.5; // retro reflection
         albedo *= pupil; // pupil
-        albedo += pow(spe,vec3(800.))*3; // specular light
+        albedo += pow(spe,vec3(800.))*3.; // specular light
         albedo = mix(albedo, vec3(.8), smoothstep(i_irisSize-0.01,i_irisSize, er)); // white eye
         albedo = mix(c*.3, albedo, smoothstep(0.0,0.05, abs(er-i_irisSize-0.0)+0.01)); // black edge
         
