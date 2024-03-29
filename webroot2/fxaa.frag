@@ -1,6 +1,9 @@
-#version 150
+# version 300 es
+
+precision mediump float;
+
 out vec4 fragColor;
-const vec2 iResolution = vec2(1920.,1080.);
+const vec2 iResolution = vec2(640.,480.);
 
 
 uniform sampler2D tex;

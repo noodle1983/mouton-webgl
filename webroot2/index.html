@@ -9,6 +9,7 @@
 <body>
     <canvas id="canvas" oncontextmenu="event.preventDefault()" width="640" height="480"></canvas>
     <script type='text/javascript'>
+		const ENABLE_FAXX = true;
 		async function compileShader(gl, type, source) {
 			let startTime = Date.now();
 			let shader = gl.createShader(type);
@@ -35,10 +36,10 @@
 			
 			let startTime = Date.now();
 			let shaderProgram = gl.createProgram();
-			if (shader1 != 0){
+			if (shader1){
 				gl.attachShader(shaderProgram, shader1);
 			}
-			if (shader2 != 0){
+			if (shader2){
 				gl.attachShader(shaderProgram, shader2);
 			}
 			await gl.linkProgram(shaderProgram);
@@ -96,17 +97,51 @@
 				return -1;
 			}
 			
+			let fxaaProgram;
+			if (ENABLE_FAXX){
+				let fxaaVertSource = await fetch("fxaa.vert")
+					.then(response => response.text())
+					.then(text => new Promise((r) => {r(text)}));
+				let fxaaFragSource = await fetch("fxaa.frag")
+					.then(response => response.text())
+					.then(text => new Promise((r) => {r(text)}));
+				
+				let fxaaVertShader = await compileShader(gl, gl.VERTEX_SHADER, fxaaVertSource);
+				let fxaaFragShader = await compileShader(gl, gl.FRAGMENT_SHADER, fxaaFragSource);
+				fxaaProgram = await createProgram(gl, fxaaVertShader, fxaaFragShader);
+				
+				// because all render passes need exactly the same input, we can do it once for all
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, 1);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+			}
+			
 			let startMiliTime = Date.now();
 			function draw(){
-				//gl.useProgram(shaderProgram);
-			    //gl.bindBuffer(gl.ARRAY_BUFFER, buffer);	
-				//gl.bufferData(gl.ARRAY_BUFFER, vertices.byteLength, gl.STATIC_DRAW);
-				//gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
+				gl.useProgram(shaderProgram);
+			    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);	
+				gl.bufferData(gl.ARRAY_BUFFER, vertices.byteLength, gl.STATIC_DRAW);
+				gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
 				
 				let passSeconds = (Date.now() - startMiliTime) / 1000.0;
 				gl.uniform1f(uniformLocation, passSeconds);
 
 				gl.drawArrays(gl.TRIANGLES, 0, vertices.byteLength/4/2);
+				
+				if (ENABLE_FAXX){
+					gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 0, 0, 640, 480, 0);
+					gl.useProgram(fxaaProgram);		
+					gl.bindBuffer(gl.ARRAY_BUFFER, buffer);	
+					gl.bufferData(gl.ARRAY_BUFFER, vertices.byteLength, gl.STATIC_DRAW);
+					gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
+					gl.uniform1i(0, 0);
+					gl.drawArrays(gl.TRIANGLES, 0, vertices.byteLength/4/2);
+
+					gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 0, 0, 640, 480, 0);
+					gl.drawArrays(gl.TRIANGLES, 0, vertices.byteLength/4/2);
+				}
+
 				
 				requestAnimationFrame(draw)
 			}
