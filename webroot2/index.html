@@ -8,6 +8,10 @@
 
 <body>
     <canvas id="canvas" oncontextmenu="event.preventDefault()" width="640" height="480"></canvas>
+	<p>The initial compilation and linking of the shader can take approximately 1 minute, causing the browser to become unresponsive during that time.</p>
+	<p>I will be appreciate if someone can help.</p>
+	<p>Webgl Project github: <a href='https://github.com/noodle1983/mouton-webgl'>mouton-webgl from noodle1983</a></p>
+	<p>Original Project github: <a href='https://github.com/ctrl-alt-test/mouton'>mouton from ctrl-alt-test</a></p>
     <script type='text/javascript'>
 		const ENABLE_FAXX = true;
 		async function compileShader(gl, type, source) {
@@ -26,7 +30,7 @@
 				return;
 			}
 
-			console.log("It takes " + (Date.now() - startTime) + "s to compile " + (type == gl.VERTEX_SHADER ? "VERTEX" : "FRAGMENT") + " shader.");
+			console.log("It takes " + (Date.now() - startTime) + "ms to compile " + (type == gl.VERTEX_SHADER ? "VERTEX" : "FRAGMENT") + " shader.");
 			return shader;
 		}
 		
@@ -50,7 +54,7 @@
 				return;
 			}
 			
-			console.log("It takes " + (Date.now() - startTime) + "s to link shader.");
+			console.log("It takes " + (Date.now() - startTime) + "ms to link shader.");
 			return shaderProgram;
 		}
 		
@@ -58,6 +62,9 @@
 		{
 			let canvas = document.getElementById('canvas');
 			let gl = canvas.getContext('webgl2');
+			window.gl = gl;
+			const { width, height } = gl.canvas;
+			gl.viewport(0, 0, width, height);
 			
 			gl.clearColor(0.9, 0.9, 0.9, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT);
@@ -97,7 +104,7 @@
 				return -1;
 			}
 			
-			let fxaaProgram;
+			let fxaaProgram, resultTexture, faxxUniformLocation;
 			if (ENABLE_FAXX){
 				let fxaaVertSource = await fetch("fxaa.vert")
 					.then(response => response.text())
@@ -111,10 +118,16 @@
 				fxaaProgram = await createProgram(gl, fxaaVertShader, fxaaFragShader);
 				
 				// because all render passes need exactly the same input, we can do it once for all
+				resultTexture = gl.createTexture();
 				gl.activeTexture(gl.TEXTURE0);
-				gl.bindTexture(gl.TEXTURE_2D, 1);
+				gl.bindTexture(gl.TEXTURE_2D, resultTexture);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
+				let faxxUniformLocation = gl.getUniformLocation(fxaaProgram, "tex");
+				if (!faxxUniformLocation) {
+					console.error("faxxUniformLocation not found!");
+					return -1;
+				}
 			}
 			
 			let startMiliTime = Date.now();
@@ -130,16 +143,18 @@
 				gl.drawArrays(gl.TRIANGLES, 0, vertices.byteLength/4/2);
 				
 				if (ENABLE_FAXX){
-					gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 0, 0, 640, 480, 0);
+					gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 0, 0, width, height, 0);
+					
 					gl.useProgram(fxaaProgram);		
 					gl.bindBuffer(gl.ARRAY_BUFFER, buffer);	
 					gl.bufferData(gl.ARRAY_BUFFER, vertices.byteLength, gl.STATIC_DRAW);
 					gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
-					gl.uniform1i(0, 0);
+					gl.uniform1i(faxxUniformLocation, 0);	
+					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 					gl.drawArrays(gl.TRIANGLES, 0, vertices.byteLength/4/2);
 
-					gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 0, 0, 640, 480, 0);
-					gl.drawArrays(gl.TRIANGLES, 0, vertices.byteLength/4/2);
+					//gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 0, 0, width, height, 0);
+					//gl.drawArrays(gl.TRIANGLES, 0, vertices.byteLength/4/2);
 				}
 
 				
